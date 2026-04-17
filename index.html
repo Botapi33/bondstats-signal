@@ -3,66 +3,79 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats – Global Divergence</title>
+<title>BondStats Macro Pulse</title>
 
 <style>
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system;
+  margin:0;
+  font-family: system-ui;
   background: radial-gradient(circle at top, #0b1d3a, #02070f);
-  color: white;
+  color:white;
 }
 
 .container {
-  max-width: 900px;
-  margin: 60px auto;
-  padding: 20px;
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 16px;
 }
 
 .card {
   background: rgba(255,255,255,0.05);
-  border-radius: 20px;
-  padding: 28px;
-  backdrop-filter: blur(10px);
+  border-radius: 18px;
+  padding: 24px;
   border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
 }
 
 h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 26px;
+  margin-bottom: 10px;
 }
 
-.subtitle {
-  color: rgba(255,255,255,0.6);
-  margin-bottom: 20px;
+.signal {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 10px 0;
 }
 
-.region {
-  margin-bottom: 20px;
-}
-
-.region-title {
-  font-size: 16px;
+.action {
+  padding: 14px;
+  border-radius: 12px;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin: 16px 0;
 }
 
-.bar {
-  height: 6px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.1);
-  overflow: hidden;
+.green { background: rgba(34,197,94,0.2); color:#86efac; }
+.red { background: rgba(239,68,68,0.2); color:#fca5a5; }
+.gray { background: rgba(255,255,255,0.08); }
+
+.grid {
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:16px;
+  margin-top:20px;
 }
 
-.fill {
-  height: 100%;
-  background: linear-gradient(90deg, #6ee7b7, #22c55e);
+.box {
+  background: rgba(255,255,255,0.04);
+  padding:14px;
+  border-radius:10px;
 }
 
 .label {
-  margin-top: 6px;
-  font-size: 13px;
-  color: rgba(255,255,255,0.7);
+  font-size:12px;
+  opacity:0.6;
+}
+
+.value {
+  font-size:18px;
+  margin-top:4px;
+}
+
+@media(max-width:600px){
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
@@ -71,11 +84,8 @@ h1 {
 
 <div class="container">
   <div class="card">
-    <h1>Global Rate Divergence</h1>
-    <div class="subtitle">Where yields are moving globally</div>
-
+    <h1>BondStats Macro Pulse</h1>
     <div id="content">Loading...</div>
-
   </div>
 </div>
 
@@ -86,47 +96,63 @@ fetch(url)
 .then(res => res.json())
 .then(data => {
 
-  const regions = {
-    "North America": [],
-    "Europe": [],
-    "Asia": [],
-    "Latin America": [],
-    "Africa": [],
-    "Other": []
-  };
+  const valid = data.filter(d => d.change !== null);
 
-  data.forEach(d => {
-    if (!d.region) return;
-    if (!regions[d.region]) regions["Other"].push(d);
-    else regions[d.region].push(d);
-  });
+  const rising = valid.filter(d => d.change > 0);
+  const falling = valid.filter(d => d.change < 0);
 
-  let html = "";
+  const breadth = Math.round((rising.length / valid.length) * 100);
 
-  Object.keys(regions).forEach(region => {
-    const items = regions[region];
-    if (!items.length) return;
+  const avgMove = (valid.reduce((sum,d)=>sum+d.change,0)/valid.length).toFixed(2);
 
-    const rising = items.filter(i => i.change > 0).length;
-    const percent = Math.round((rising / items.length) * 100);
+  let signal = "MIXED";
+  let action = "Neutral positioning — no clear global trend";
+  let color = "gray";
 
-    let label = "Mixed";
-    if (percent > 60) label = "Rising";
-    if (percent < 40) label = "Falling";
+  if (breadth > 60) {
+    signal = "TIGHTENING";
+    action = "Rates rising — reduce duration exposure";
+    color = "red";
+  }
 
-    html += `
-      <div class="region">
-        <div class="region-title">${region} — ${label}</div>
-        <div class="bar">
-          <div class="fill" style="width:${percent}%"></div>
-        </div>
-        <div class="label">${percent}% of markets rising</div>
+  if (breadth < 40) {
+    signal = "EASING";
+    action = "Rates falling — extend duration exposure";
+    color = "green";
+  }
+
+  const topDrivers = valid
+    .sort((a,b)=>Math.abs(b.change)-Math.abs(a.change))
+    .slice(0,3)
+    .map(d => d.country)
+    .join(", ");
+
+  document.getElementById("content").innerHTML = `
+    <div class="signal">${signal}</div>
+    <div class="action ${color}">${action}</div>
+
+    <div class="grid">
+      <div class="box">
+        <div class="label">Breadth</div>
+        <div class="value">${breadth}% rising</div>
       </div>
-    `;
-  });
 
-  document.getElementById("content").innerHTML = html;
+      <div class="box">
+        <div class="label">Average Move</div>
+        <div class="value">${avgMove} pp</div>
+      </div>
 
+      <div class="box">
+        <div class="label">Markets</div>
+        <div class="value">${valid.length}</div>
+      </div>
+
+      <div class="box">
+        <div class="label">Top Drivers</div>
+        <div class="value">${topDrivers}</div>
+      </div>
+    </div>
+  `;
 });
 </script>
 
