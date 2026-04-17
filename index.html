@@ -17,42 +17,58 @@ body{
     min-height:100vh;
 }
 
-/* CONTAINER */
 .wrapper{
     width:100%;
     max-width:420px;
     padding:20px;
 }
 
-/* CARD */
-.signal-box{
+.card{
     background:linear-gradient(180deg,#0d131a,#0a0f14);
     border:1px solid rgba(255,255,255,0.05);
     border-radius:16px;
-    padding:28px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    padding:24px;
+    box-shadow:0 25px 70px rgba(0,0,0,0.7);
 }
 
 /* HEADER */
-.label{
-    font-size:11px;
-    letter-spacing:1.5px;
-    color:#8b949e;
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
 }
 
-/* MAIN SIGNAL */
+.label{
+    font-size:11px;
+    color:#8b949e;
+    letter-spacing:1.5px;
+}
+
+.pulse{
+    width:8px;
+    height:8px;
+    background:#3fb950;
+    border-radius:50%;
+    animation:pulse 1.5s infinite;
+}
+
+@keyframes pulse{
+    0%{opacity:0.3;}
+    50%{opacity:1;}
+    100%{opacity:0.3;}
+}
+
+/* MAIN */
 .main{
     font-size:28px;
     font-weight:700;
-    margin-top:10px;
+    margin-top:12px;
 }
 
-/* COLORS */
-.rising{ color:#3fb950; }
-.falling{ color:#f85149; }
-.mixed{ color:#9aa4b2; }
+.rising{color:#3fb950;}
+.falling{color:#f85149;}
+.mixed{color:#9aa4b2;}
 
-/* COVERAGE */
 .coverage{
     font-size:14px;
     color:#9aa4b2;
@@ -61,29 +77,39 @@ body{
 
 /* MOVERS */
 .section{
-    margin-top:22px;
+    margin-top:20px;
     font-size:12px;
     color:#8b949e;
-}
-
-.movers{
-    margin-top:10px;
-    font-size:14px;
 }
 
 .row{
     display:flex;
     justify-content:space-between;
     padding:6px 0;
-    border-bottom:1px solid rgba(255,255,255,0.04);
 }
-
-.row:last-child{border:none;}
 
 .up{color:#3fb950;}
 .down{color:#f85149;}
 
-/* LOADER */
+/* HEATMAP */
+.heatmap{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    margin-top:15px;
+}
+
+.box{
+    padding:6px;
+    font-size:10px;
+    text-align:center;
+    border-radius:6px;
+}
+
+.box.up{background:rgba(63,185,80,0.2);}
+.box.down{background:rgba(248,81,73,0.2);}
+.box.flat{background:rgba(154,164,178,0.2);}
+
 .loader{
     width:18px;
     height:18px;
@@ -91,11 +117,10 @@ body{
     border-top:3px solid #4da3ff;
     border-radius:50%;
     animation:spin 1s linear infinite;
-    margin-top:10px;
 }
 
 @keyframes spin{
-    0%{transform:rotate(0deg);}
+    0%{transform:rotate(0);}
     100%{transform:rotate(360deg);}
 }
 </style>
@@ -105,18 +130,21 @@ body{
 
 <div class="wrapper">
 
-<div class="signal-box">
+<div class="card">
 
-<div class="label">BONDSTATS SIGNAL</div>
-
-<div id="mainSignal" class="main">
-    <div class="loader"></div>
+<div class="header">
+    <div class="label">BONDSTATS SIGNAL</div>
+    <div class="pulse"></div>
 </div>
 
+<div id="main" class="main"><div class="loader"></div></div>
 <div id="coverage" class="coverage"></div>
 
 <div class="section">Top Movers</div>
-<div id="movers" class="movers"></div>
+<div id="movers"></div>
+
+<div class="section">Market Heatmap</div>
+<div id="heatmap" class="heatmap"></div>
 
 </div>
 
@@ -124,52 +152,50 @@ body{
 
 <script>
 
-const API = "https://botapi33.github.io/bondstats-global-yields/global_yields.json";
+const API="https://botapi33.github.io/bondstats-global-yields/global_yields.json";
 
-async function loadSignal(){
-    try{
-        const res = await fetch(API + "?t=" + Date.now());
-        const data = await res.json();
+async function load(){
 
-        const s = data.signal;
+    const res=await fetch(API+"?t="+Date.now());
+    const data=await res.json();
 
-        const main = document.getElementById("mainSignal");
-        const coverage = document.getElementById("coverage");
-        const movers = document.getElementById("movers");
+    const s=data.signal;
+    const countries=data.countries;
 
-        // MAIN TEXT
-        main.innerHTML = s.direction.toUpperCase() + " • " + s.strength.toUpperCase();
+    const main=document.getElementById("main");
+    const coverage=document.getElementById("coverage");
+    const movers=document.getElementById("movers");
+    const heatmap=document.getElementById("heatmap");
 
-        // COLOR
-        main.classList.remove("rising","falling","mixed");
-        main.classList.add(s.direction.toLowerCase());
+    // MAIN
+    main.innerText=s.direction.toUpperCase()+" • "+s.strength.toUpperCase();
+    main.classList.add(s.direction.toLowerCase());
 
-        // COVERAGE
-        coverage.innerText =
-            s.coverage + "% of markets moving " + s.direction.toLowerCase();
+    coverage.innerText=s.coverage+"% of markets moving "+s.direction.toLowerCase();
 
-        // MOVERS
-        let html = "";
+    // MOVERS
+    let mHTML="";
+    s.topMovers.forEach(m=>{
+        let cls=m.change>=0?"up":"down";
+        let sign=m.change>0?"+":"";
+        mHTML+=`<div class="row"><div>${m.country}</div><div class="${cls}">${sign}${m.change}%</div></div>`;
+    });
+    movers.innerHTML=mHTML;
 
-        s.topMovers.forEach(m=>{
-            const cls = m.change >= 0 ? "up" : "down";
-            const sign = m.change > 0 ? "+" : "";
+    // HEATMAP
+    let hHTML="";
+    Object.values(countries).forEach(c=>{
+        let cls="flat";
+        if(c.change>0) cls="up";
+        if(c.change<0) cls="down";
 
-            html += `
-            <div class="row">
-                <div>${m.country}</div>
-                <div class="${cls}">${sign}${m.change}%</div>
-            </div>`;
-        });
+        hHTML+=`<div class="box ${cls}">${c.label.slice(0,3)}</div>`;
+    });
 
-        movers.innerHTML = html;
-
-    }catch(e){
-        document.getElementById("mainSignal").innerText = "Signal unavailable";
-    }
+    heatmap.innerHTML=hHTML;
 }
 
-loadSignal();
+load();
 
 </script>
 
