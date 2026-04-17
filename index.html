@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal</title>
 
 <style>
 body{
@@ -13,123 +12,102 @@ body{
     color:#e6edf3;
 }
 
-.container{
-    max-width:620px;
+.wrap{
+    max-width:900px;
     margin:auto;
     padding:20px;
 }
 
-.card{
-    background:#0b1117;
-    border-radius:18px;
-    padding:22px;
-    border:1px solid rgba(255,255,255,0.05);
+/* HEADER */
+.header{
+    margin-bottom:20px;
 }
 
-/* HEADER */
-.regime{
+.title{
     font-size:28px;
     font-weight:800;
 }
 
 .meta{
-    margin-top:6px;
-    font-size:14px;
     color:#9aa4b2;
+    margin-top:6px;
 }
 
-.submeta{
-    margin-top:4px;
-    font-size:12px;
-    color:#6e7681;
+/* GRID */
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:10px;
 }
 
-/* SIGNAL */
-.signal{
-    margin-top:18px;
-    padding:14px;
-    border-radius:12px;
-    font-size:16px;
+.box{
+    padding:12px;
+    border-radius:10px;
+    font-size:13px;
+    background:#0b1117;
+    border:1px solid rgba(255,255,255,0.05);
+}
+
+/* COLORS */
+.up{
+    background:rgba(63,185,80,0.15);
+}
+
+.down{
+    background:rgba(248,81,73,0.15);
+}
+
+.flat{
+    background:rgba(255,255,255,0.05);
+}
+
+.country{
     font-weight:600;
-    background:linear-gradient(
-        90deg,
-        rgba(255,255,255,0.06),
-        rgba(255,255,255,0.02)
-    );
-}
-
-/* BLOCK */
-.block{
-    margin-top:18px;
-}
-
-.label{
-    font-size:11px;
-    letter-spacing:1.5px;
-    color:#8b949e;
 }
 
 .value{
-    margin-top:6px;
-    font-size:18px;
-    font-weight:700;
-}
-
-.sub{
-    font-size:13px;
-    color:#9aa4b2;
+    font-size:12px;
     margin-top:4px;
+    color:#9aa4b2;
 }
 
-.history{
-    margin-top:10px;
-    font-size:13px;
-    color:#9aa4b2;
-    line-height:1.6;
+/* BAR */
+.bar{
+    margin-top:20px;
+    height:8px;
+    border-radius:10px;
+    background:#111;
+    overflow:hidden;
+}
+
+.fill{
+    height:100%;
+    background:#3fb950;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-<div class="card">
+<div class="wrap">
 
-<div id="regime" class="regime">Loading...</div>
+<div class="header">
+<div id="title" class="title">Loading...</div>
 <div id="meta" class="meta"></div>
-<div class="submeta">Global coverage • mixed update timing</div>
 
-<div id="signal" class="signal"></div>
-
-<div class="block">
-<div class="label">CONVICTION</div>
-<div id="conviction" class="value"></div>
-</div>
-
-<div class="block">
-<div class="label">TOP DRIVERS</div>
-<div id="drivers" class="sub"></div>
-</div>
-
-<div class="block">
-<div class="label">TREND</div>
-<div id="trend" class="value"></div>
-</div>
-
-<div class="block">
-<div class="label">7D HISTORY</div>
-<div id="history" class="history"></div>
+<div class="bar">
+<div id="bar" class="fill"></div>
 </div>
 
 </div>
+
+<div id="grid" class="grid"></div>
+
 </div>
 
 <script>
 
 const API="https://botapi33.github.io/bondstats-global-yields/global_yields.json";
-const STORAGE_KEY="bondstats_history";
-
-/* ---------- LOAD ---------- */
 
 async function load(){
 
@@ -138,113 +116,54 @@ const data = await res.json();
 
 const countries = Object.entries(data.countries);
 
-/* ---------- CALC ---------- */
+let up=0, down=0;
 
-let up=[], down=[];
+/* SORT BY MOVE */
+countries.sort((a,b)=>Math.abs(b[1].change)-Math.abs(a[1].change));
 
-countries.forEach(([name,c])=>{
-    if(c.change>0) up.push({name,val:c.change});
-    if(c.change<0) down.push({name,val:c.change});
+/* COUNTS */
+countries.forEach(([_,c])=>{
+    if(c.change>0) up++;
+    if(c.change<0) down++;
 });
 
 const total = countries.length;
+const upPct = Math.round((up/total)*100);
 
-const dominance = Math.abs(up.length - down.length)/total;
-const avgMove = countries.reduce((a,[,c])=>a+Math.abs(c.change||0),0)/total;
+/* HEADER */
+let regime="Mixed";
 
-/* ---------- REGIME ---------- */
+if(up > down*1.3) regime="Global tightening";
+if(down > up*1.3) regime="Global easing";
 
-let regime="MIXED";
-
-if(up.length > down.length*1.3) regime="TIGHTENING";
-if(down.length > up.length*1.3) regime="EASING";
-
-/* ---------- CONVICTION ---------- */
-
-let conviction = Math.round((dominance*0.6 + avgMove*0.4)*100);
-
-/* ---------- SIGNAL TEXT ---------- */
-
-let signalText="Balanced conditions across global bond markets";
-
-if(regime==="TIGHTENING"){
-    signalText="Global yields are trending higher — duration risk increasing";
-}
-else if(regime==="EASING"){
-    signalText="Global yields are declining — duration exposure becoming more attractive";
-}
-
-/* ---------- DRIVERS ---------- */
-
-const movers = [...up, ...down]
-.sort((a,b)=>Math.abs(b.val)-Math.abs(a.val))
-.slice(0,3)
-.map(x=>x.name.replace("_"," "))
-.join(", ");
-
-/* ---------- HISTORY ---------- */
-
-let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-
-const today = new Date().toISOString().slice(0,10);
-
-if(history.length === 0 || history[history.length-1].date !== today){
-    history.push({date: today, regime});
-}
-
-history = history.slice(-7);
-localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-
-/* ---------- TREND ---------- */
-
-function analyzeTrend(history){
-
-if(history.length < 3) return "Building signal";
-
-const last = history.slice(-3).map(x=>x.regime);
-
-if(last.every(r => r === "TIGHTENING"))
-    return "Upward pressure strengthening";
-
-if(last.every(r => r === "EASING"))
-    return "Downward pressure building";
-
-if(new Set(last).size > 1)
-    return "Possible turning point";
-
-return "Stable conditions";
-}
-
-const trend = analyzeTrend(history);
-
-/* ---------- RENDER HISTORY ---------- */
-
-let historyHTML="";
-
-history.forEach(h=>{
-    historyHTML += `${h.date} — ${h.regime}<br>`;
-});
-
-/* ---------- UI ---------- */
-
-document.getElementById("regime").innerText = regime;
+document.getElementById("title").innerText = regime;
 
 document.getElementById("meta").innerText =
-`${up.length} rising • ${down.length} falling`;
+`${up} rising • ${down} falling • ${total} markets`;
 
-document.getElementById("signal").innerText = signalText;
+document.getElementById("bar").style.width = upPct + "%";
 
-document.getElementById("conviction").innerText =
-conviction + "/100";
+/* GRID */
+const grid = document.getElementById("grid");
 
-document.getElementById("drivers").innerText =
-movers || "—";
+countries.slice(0,30).forEach(([name,c])=>{
 
-document.getElementById("trend").innerText =
-trend;
+let cls="flat";
 
-document.getElementById("history").innerHTML =
-historyHTML;
+if(c.change > 0) cls="up";
+if(c.change < 0) cls="down";
+
+const el = document.createElement("div");
+el.className="box " + cls;
+
+el.innerHTML = `
+<div class="country">${name.replace("_"," ")}</div>
+<div class="value">${c.yield}% • ${c.change > 0 ? "+" : ""}${c.change}%</div>
+`;
+
+grid.appendChild(el);
+
+});
 
 }
 
