@@ -8,7 +8,7 @@
 <style>
 body {
   margin:0;
-  font-family: system-ui;
+  font-family: system-ui, -apple-system;
   background: radial-gradient(circle at top, #0b1d3a, #02070f);
   color:white;
 }
@@ -72,6 +72,11 @@ h1 {
   margin-top:4px;
 }
 
+.error {
+  color:#ff6b6b;
+  margin-top:20px;
+}
+
 @media(max-width:600px){
   .grid {
     grid-template-columns: 1fr;
@@ -90,70 +95,102 @@ h1 {
 </div>
 
 <script>
+
 const url = "https://botapi33.github.io/bondstats-global-yields/global_yields.json";
 
-fetch(url)
-.then(res => res.json())
-.then(data => {
+async function load() {
 
-  const valid = data.filter(d => d.change !== null);
+  try {
 
-  const rising = valid.filter(d => d.change > 0);
-  const falling = valid.filter(d => d.change < 0);
+    const res = await fetch(url + "?t=" + Date.now());
+    if (!res.ok) throw new Error("Fetch failed");
 
-  const breadth = Math.round((rising.length / valid.length) * 100);
+    const json = await res.json();
 
-  const avgMove = (valid.reduce((sum,d)=>sum+d.change,0)/valid.length).toFixed(2);
+    const countriesObj = json.countries;
+    if (!countriesObj) throw new Error("No countries field");
 
-  let signal = "MIXED";
-  let action = "Neutral positioning — no clear global trend";
-  let color = "gray";
+    const countries = Object.values(countriesObj);
 
-  if (breadth > 60) {
-    signal = "TIGHTENING";
-    action = "Rates rising — reduce duration exposure";
-    color = "red";
+    const valid = countries.filter(c => c.change !== null && c.change !== undefined);
+
+    if (valid.length === 0) throw new Error("No valid data");
+
+    const rising = valid.filter(c => c.change > 0);
+    const falling = valid.filter(c => c.change < 0);
+
+    const breadth = Math.round((rising.length / valid.length) * 100);
+
+    const avgMove = (
+      valid.reduce((sum, c) => sum + c.change, 0) / valid.length
+    ).toFixed(2);
+
+    let signal = "MIXED";
+    let action = "Balanced conditions — no clear global trend";
+    let color = "gray";
+
+    if (breadth > 60) {
+      signal = "TIGHTENING";
+      action = "Global yields rising — reduce duration exposure";
+      color = "red";
+    }
+
+    if (breadth < 40) {
+      signal = "EASING";
+      action = "Global yields falling — extend duration exposure";
+      color = "green";
+    }
+
+    const topDrivers = valid
+      .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+      .slice(0, 3)
+      .map(c => c.label)
+      .join(", ");
+
+    document.getElementById("content").innerHTML = `
+      <div class="signal">${signal}</div>
+
+      <div class="action ${color}">
+        ${action}
+      </div>
+
+      <div class="grid">
+
+        <div class="box">
+          <div class="label">Breadth</div>
+          <div class="value">${breadth}% rising</div>
+        </div>
+
+        <div class="box">
+          <div class="label">Average Move</div>
+          <div class="value">${avgMove} pp</div>
+        </div>
+
+        <div class="box">
+          <div class="label">Markets</div>
+          <div class="value">${valid.length}</div>
+        </div>
+
+        <div class="box">
+          <div class="label">Top Drivers</div>
+          <div class="value">${topDrivers}</div>
+        </div>
+
+      </div>
+    `;
+
+  } catch (err) {
+
+    document.getElementById("content").innerHTML = `
+      <div class="error">Error loading data</div>
+    `;
+
+    console.error(err);
   }
+}
 
-  if (breadth < 40) {
-    signal = "EASING";
-    action = "Rates falling — extend duration exposure";
-    color = "green";
-  }
+load();
 
-  const topDrivers = valid
-    .sort((a,b)=>Math.abs(b.change)-Math.abs(a.change))
-    .slice(0,3)
-    .map(d => d.country)
-    .join(", ");
-
-  document.getElementById("content").innerHTML = `
-    <div class="signal">${signal}</div>
-    <div class="action ${color}">${action}</div>
-
-    <div class="grid">
-      <div class="box">
-        <div class="label">Breadth</div>
-        <div class="value">${breadth}% rising</div>
-      </div>
-
-      <div class="box">
-        <div class="label">Average Move</div>
-        <div class="value">${avgMove} pp</div>
-      </div>
-
-      <div class="box">
-        <div class="label">Markets</div>
-        <div class="value">${valid.length}</div>
-      </div>
-
-      <div class="box">
-        <div class="label">Top Drivers</div>
-        <div class="value">${topDrivers}</div>
-      </div>
-    </div>
-  `;
-});
 </script>
 
 </body>
