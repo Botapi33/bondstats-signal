@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal V3</title>
+<title>BondStats Signal</title>
 
 <style>
 body{
@@ -25,33 +25,37 @@ body{
 
 .card{
     background:linear-gradient(180deg,#0d131a,#0a0f14);
+    border:1px solid rgba(255,255,255,0.05);
     border-radius:16px;
-    padding:24px;
+    padding:26px;
     box-shadow:0 25px 70px rgba(0,0,0,0.7);
 }
 
-.header{
-    display:flex;
-    justify-content:space-between;
-}
-
+/* HEADER */
 .label{
     font-size:11px;
+    letter-spacing:1.5px;
     color:#8b949e;
 }
 
+/* MAIN */
 .main{
-    font-size:26px;
+    font-size:28px;
     font-weight:700;
     margin-top:10px;
 }
 
+.rising{color:#3fb950;}
+.falling{color:#f85149;}
+.mixed{color:#9aa4b2;}
+
 .coverage{
     font-size:14px;
     color:#9aa4b2;
+    margin-top:6px;
 }
 
-/* HEATMAP */
+/* HEATMAP (CLEAN!) */
 .heatmap{
     display:grid;
     grid-template-columns:repeat(4,1fr);
@@ -60,33 +64,38 @@ body{
 }
 
 .box{
-    padding:8px;
-    border-radius:6px;
-    font-size:10px;
+    padding:6px;
+    font-size:11px;
     text-align:center;
+    border-radius:6px;
     cursor:pointer;
-    transition:0.2s;
 }
 
-.box:hover{
-    transform:scale(1.1);
-}
+.box.up{background:rgba(63,185,80,0.15);}
+.box.down{background:rgba(248,81,73,0.15);}
+.box.flat{background:rgba(154,164,178,0.15);}
 
-.up{background:rgba(63,185,80,0.2);}
-.down{background:rgba(248,81,73,0.2);}
-.flat{background:rgba(154,164,178,0.2);}
-
-/* DETAIL PANEL */
+/* DETAIL */
 .detail{
-    margin-top:20px;
-    padding:14px;
-    border-radius:10px;
-    background:#0b1117;
-    font-size:14px;
+    margin-top:16px;
+    font-size:13px;
+    color:#c9d1d9;
 }
 
-.highlight{
-    border:1px solid #4da3ff;
+/* LOADER */
+.loader{
+    width:18px;
+    height:18px;
+    border:3px solid #2a3643;
+    border-top:3px solid #4da3ff;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin-top:10px;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0);}
+    100%{transform:rotate(360deg);}
 }
 </style>
 </head>
@@ -97,14 +106,15 @@ body{
 
 <div class="card">
 
-<div class="header">
-    <div class="label">BONDSTATS SIGNAL</div>
+<div class="label">BONDSTATS SIGNAL</div>
+
+<div id="main" class="main">
+    <div class="loader"></div>
 </div>
 
-<div id="main" class="main">Loading...</div>
 <div id="coverage" class="coverage"></div>
 
-<div class="heatmap" id="heatmap"></div>
+<div id="heatmap" class="heatmap"></div>
 
 <div id="detail" class="detail">
 Click a country to see details
@@ -120,50 +130,60 @@ const API="https://botapi33.github.io/bondstats-global-yields/global_yields.json
 
 async function load(){
 
-    const res=await fetch(API+"?t="+Date.now());
-    const data=await res.json();
+    try{
 
-    const s=data.signal;
-    const countries=data.countries;
+        const res = await fetch(API + "?t=" + Date.now());
+        const data = await res.json();
 
-    document.getElementById("main").innerText=
-        s.direction.toUpperCase()+" • "+s.strength.toUpperCase();
+        // 👉 FLEXIBLE STRUCTURE HANDLING
+        const signal = data.signal || {};
+        const countries = data.countries || data.data || {};
 
-    document.getElementById("coverage").innerText=
-        s.coverage+"% of markets moving "+s.direction.toLowerCase();
+        const main = document.getElementById("main");
+        const coverage = document.getElementById("coverage");
+        const heatmap = document.getElementById("heatmap");
+        const detail = document.getElementById("detail");
 
-    const heatmap=document.getElementById("heatmap");
-    const detail=document.getElementById("detail");
+        // SIGNAL
+        const direction = signal.direction || "Mixed";
+        const strength = signal.strength || "Weak";
 
-    Object.values(countries).forEach(c=>{
+        main.innerText = direction.toUpperCase() + " • " + strength.toUpperCase();
+        main.classList.add(direction.toLowerCase());
 
-        let cls="flat";
-        if(c.change>0) cls="up";
-        if(c.change<0) cls="down";
-
-        let el=document.createElement("div");
-        el.className="box "+cls;
-
-        // Highlight USA
-        if(c.label==="United States"){
-            el.classList.add("highlight");
+        if(signal.coverage){
+            coverage.innerText = signal.coverage + "% of markets moving " + direction.toLowerCase();
         }
 
-        el.innerText=c.label.slice(0,3);
+        // HEATMAP
+        Object.values(countries).forEach(c=>{
 
-        el.onclick=()=>{
-            detail.innerHTML=`
-            <b>${c.label}</b><br><br>
-            Yield: ${c.value ?? "--"}%<br>
-            Change: ${c.change ?? "--"}<br>
-            Source: ${c.source}
-            `;
-        };
+            const name = c.label || c.country || "N/A";
+            const change = c.change ?? 0;
+            const value = c.value ?? "--";
 
-        heatmap.appendChild(el);
+            let cls = "flat";
+            if(change > 0) cls = "up";
+            if(change < 0) cls = "down";
 
-    });
+            const el = document.createElement("div");
+            el.className = "box " + cls;
+            el.innerText = name.slice(0,3);
 
+            el.onclick = ()=>{
+                detail.innerHTML = `
+                <b>${name}</b><br>
+                Yield: ${value}%<br>
+                Change: ${change}
+                `;
+            };
+
+            heatmap.appendChild(el);
+        });
+
+    }catch(e){
+        document.getElementById("main").innerText = "Error loading data";
+    }
 }
 
 load();
