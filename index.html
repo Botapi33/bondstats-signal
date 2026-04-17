@@ -3,172 +3,131 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BondStats – Global Divergence</title>
 
 <style>
-body{
-    margin:0;
-    font-family:-apple-system,Segoe UI;
-    background:#05080d;
-    color:#e6edf3;
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system;
+  background: radial-gradient(circle at top, #0b1d3a, #02070f);
+  color: white;
 }
 
-.wrap{
-    max-width:900px;
-    margin:auto;
-    padding:20px;
+.container {
+  max-width: 900px;
+  margin: 60px auto;
+  padding: 20px;
 }
 
-/* HEADER */
-.header{
-    margin-bottom:20px;
+.card {
+  background: rgba(255,255,255,0.05);
+  border-radius: 20px;
+  padding: 28px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
-.title{
-    font-size:28px;
-    font-weight:800;
+h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
 }
 
-.meta{
-    color:#9aa4b2;
-    margin-top:6px;
+.subtitle {
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 20px;
 }
 
-/* GRID */
-.grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-    gap:10px;
+.region {
+  margin-bottom: 20px;
 }
 
-.box{
-    padding:12px;
-    border-radius:10px;
-    font-size:13px;
-    background:#0b1117;
-    border:1px solid rgba(255,255,255,0.05);
+.region-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
-/* COLORS */
-.up{
-    background:rgba(63,185,80,0.15);
+.bar {
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
 }
 
-.down{
-    background:rgba(248,81,73,0.15);
+.fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6ee7b7, #22c55e);
 }
 
-.flat{
-    background:rgba(255,255,255,0.05);
-}
-
-.country{
-    font-weight:600;
-}
-
-.value{
-    font-size:12px;
-    margin-top:4px;
-    color:#9aa4b2;
-}
-
-/* BAR */
-.bar{
-    margin-top:20px;
-    height:8px;
-    border-radius:10px;
-    background:#111;
-    overflow:hidden;
-}
-
-.fill{
-    height:100%;
-    background:#3fb950;
+.label {
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
 }
 </style>
 </head>
 
 <body>
 
-<div class="wrap">
+<div class="container">
+  <div class="card">
+    <h1>Global Rate Divergence</h1>
+    <div class="subtitle">Where yields are moving globally</div>
 
-<div class="header">
-<div id="title" class="title">Loading...</div>
-<div id="meta" class="meta"></div>
+    <div id="content">Loading...</div>
 
-<div class="bar">
-<div id="bar" class="fill"></div>
-</div>
-
-</div>
-
-<div id="grid" class="grid"></div>
-
+  </div>
 </div>
 
 <script>
+const url = "https://botapi33.github.io/bondstats-global-yields/global_yields.json";
 
-const API="https://botapi33.github.io/bondstats-global-yields/global_yields.json";
+fetch(url)
+.then(res => res.json())
+.then(data => {
 
-async function load(){
+  const regions = {
+    "North America": [],
+    "Europe": [],
+    "Asia": [],
+    "Latin America": [],
+    "Africa": [],
+    "Other": []
+  };
 
-const res = await fetch(API + "?t=" + Date.now());
-const data = await res.json();
+  data.forEach(d => {
+    if (!d.region) return;
+    if (!regions[d.region]) regions["Other"].push(d);
+    else regions[d.region].push(d);
+  });
 
-const countries = Object.entries(data.countries);
+  let html = "";
 
-let up=0, down=0;
+  Object.keys(regions).forEach(region => {
+    const items = regions[region];
+    if (!items.length) return;
 
-/* SORT BY MOVE */
-countries.sort((a,b)=>Math.abs(b[1].change)-Math.abs(a[1].change));
+    const rising = items.filter(i => i.change > 0).length;
+    const percent = Math.round((rising / items.length) * 100);
 
-/* COUNTS */
-countries.forEach(([_,c])=>{
-    if(c.change>0) up++;
-    if(c.change<0) down++;
-});
+    let label = "Mixed";
+    if (percent > 60) label = "Rising";
+    if (percent < 40) label = "Falling";
 
-const total = countries.length;
-const upPct = Math.round((up/total)*100);
+    html += `
+      <div class="region">
+        <div class="region-title">${region} — ${label}</div>
+        <div class="bar">
+          <div class="fill" style="width:${percent}%"></div>
+        </div>
+        <div class="label">${percent}% of markets rising</div>
+      </div>
+    `;
+  });
 
-/* HEADER */
-let regime="Mixed";
-
-if(up > down*1.3) regime="Global tightening";
-if(down > up*1.3) regime="Global easing";
-
-document.getElementById("title").innerText = regime;
-
-document.getElementById("meta").innerText =
-`${up} rising • ${down} falling • ${total} markets`;
-
-document.getElementById("bar").style.width = upPct + "%";
-
-/* GRID */
-const grid = document.getElementById("grid");
-
-countries.slice(0,30).forEach(([name,c])=>{
-
-let cls="flat";
-
-if(c.change > 0) cls="up";
-if(c.change < 0) cls="down";
-
-const el = document.createElement("div");
-el.className="box " + cls;
-
-el.innerHTML = `
-<div class="country">${name.replace("_"," ")}</div>
-<div class="value">${c.yield}% • ${c.change > 0 ? "+" : ""}${c.change}%</div>
-`;
-
-grid.appendChild(el);
+  document.getElementById("content").innerHTML = html;
 
 });
-
-}
-
-load();
-
 </script>
 
 </body>
