@@ -14,7 +14,7 @@ body{
 }
 
 .container{
-    max-width:600px;
+    max-width:620px;
     margin:auto;
     padding:20px;
 }
@@ -26,9 +26,9 @@ body{
     border:1px solid rgba(255,255,255,0.05);
 }
 
-/* HEADLINE */
+/* HEADER */
 .regime{
-    font-size:30px;
+    font-size:28px;
     font-weight:800;
 }
 
@@ -38,7 +38,7 @@ body{
     color:#9aa4b2;
 }
 
-.updated{
+.submeta{
     margin-top:4px;
     font-size:12px;
     color:#6e7681;
@@ -46,16 +46,17 @@ body{
 
 /* SIGNAL */
 .signal{
-    margin-top:20px;
-    padding:16px;
+    margin-top:18px;
+    padding:14px;
     border-radius:12px;
-    font-size:18px;
+    font-size:16px;
     font-weight:600;
+    background:linear-gradient(
+        90deg,
+        rgba(255,255,255,0.06),
+        rgba(255,255,255,0.02)
+    );
 }
-
-.buy{ background:rgba(63,185,80,0.15); color:#3fb950;}
-.sell{ background:rgba(248,81,73,0.15); color:#f85149;}
-.neutral{ background:rgba(255,255,255,0.05);}
 
 /* BLOCK */
 .block{
@@ -79,6 +80,13 @@ body{
     color:#9aa4b2;
     margin-top:4px;
 }
+
+.history{
+    margin-top:10px;
+    font-size:13px;
+    color:#9aa4b2;
+    line-height:1.6;
+}
 </style>
 </head>
 
@@ -89,7 +97,7 @@ body{
 
 <div id="regime" class="regime">Loading...</div>
 <div id="meta" class="meta"></div>
-<div id="updated" class="updated"></div>
+<div class="submeta">Global coverage • mixed update timing</div>
 
 <div id="signal" class="signal"></div>
 
@@ -103,12 +111,25 @@ body{
 <div id="drivers" class="sub"></div>
 </div>
 
+<div class="block">
+<div class="label">TREND</div>
+<div id="trend" class="value"></div>
+</div>
+
+<div class="block">
+<div class="label">7D HISTORY</div>
+<div id="history" class="history"></div>
+</div>
+
 </div>
 </div>
 
 <script>
 
 const API="https://botapi33.github.io/bondstats-global-yields/global_yields.json";
+const STORAGE_KEY="bondstats_history";
+
+/* ---------- LOAD ---------- */
 
 async function load(){
 
@@ -117,7 +138,7 @@ const data = await res.json();
 
 const countries = Object.entries(data.countries);
 
-/* ----------- CALC ----------- */
+/* ---------- CALC ---------- */
 
 let up=[], down=[];
 
@@ -131,66 +152,99 @@ const total = countries.length;
 const dominance = Math.abs(up.length - down.length)/total;
 const avgMove = countries.reduce((a,[,c])=>a+Math.abs(c.change||0),0)/total;
 
-/* ----------- REGIME ----------- */
+/* ---------- REGIME ---------- */
 
 let regime="MIXED";
 
 if(up.length > down.length*1.3) regime="TIGHTENING";
 if(down.length > up.length*1.3) regime="EASING";
 
-/* ----------- CONVICTION ----------- */
+/* ---------- CONVICTION ---------- */
 
 let conviction = Math.round((dominance*0.6 + avgMove*0.4)*100);
 
-/* ----------- SIGNAL ----------- */
+/* ---------- SIGNAL TEXT ---------- */
 
-let signalText="Stay neutral";
-let signalClass="neutral";
+let signalText="Balanced conditions across global bond markets";
 
 if(regime==="TIGHTENING"){
-    signalText="Rates rising → reduce duration exposure";
-    signalClass="sell";
+    signalText="Global yields are trending higher — duration risk increasing";
 }
 else if(regime==="EASING"){
-    signalText="Rates falling → extend duration exposure";
-    signalClass="buy";
+    signalText="Global yields are declining — duration exposure becoming more attractive";
 }
 
-/* ----------- DRIVERS ----------- */
+/* ---------- DRIVERS ---------- */
 
 const movers = [...up, ...down]
 .sort((a,b)=>Math.abs(b.val)-Math.abs(a.val))
 .slice(0,3)
-.map(x=>x.name)
+.map(x=>x.name.replace("_"," "))
 .join(", ");
 
-/* ----------- DATE ----------- */
+/* ---------- HISTORY ---------- */
 
-let latestDate="";
+let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
-countries.forEach(([_,c])=>{
-    if(c.date > latestDate) latestDate = c.date;
+const today = new Date().toISOString().slice(0,10);
+
+if(history.length === 0 || history[history.length-1].date !== today){
+    history.push({date: today, regime});
+}
+
+history = history.slice(-7);
+localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+
+/* ---------- TREND ---------- */
+
+function analyzeTrend(history){
+
+if(history.length < 3) return "Building signal";
+
+const last = history.slice(-3).map(x=>x.regime);
+
+if(last.every(r => r === "TIGHTENING"))
+    return "Upward pressure strengthening";
+
+if(last.every(r => r === "EASING"))
+    return "Downward pressure building";
+
+if(new Set(last).size > 1)
+    return "Possible turning point";
+
+return "Stable conditions";
+}
+
+const trend = analyzeTrend(history);
+
+/* ---------- RENDER HISTORY ---------- */
+
+let historyHTML="";
+
+history.forEach(h=>{
+    historyHTML += `${h.date} — ${h.regime}<br>`;
 });
 
-/* ----------- UI ----------- */
+/* ---------- UI ---------- */
 
 document.getElementById("regime").innerText = regime;
 
 document.getElementById("meta").innerText =
 `${up.length} rising • ${down.length} falling`;
 
-document.getElementById("updated").innerText =
-"Data: " + latestDate;
-
-const signalEl = document.getElementById("signal");
-signalEl.innerText = signalText;
-signalEl.className = "signal " + signalClass;
+document.getElementById("signal").innerText = signalText;
 
 document.getElementById("conviction").innerText =
 conviction + "/100";
 
 document.getElementById("drivers").innerText =
 movers || "—";
+
+document.getElementById("trend").innerText =
+trend;
+
+document.getElementById("history").innerHTML =
+historyHTML;
 
 }
 
