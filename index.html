@@ -3,557 +3,197 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal V4</title>
+<title>BondStats Signal V5</title>
+
 <style>
-:root{
-  --bg:#060b10;
-  --panel:#0d131a;
-  --panel-2:#0a1016;
-  --line:rgba(255,255,255,.06);
-  --text:#e6edf3;
-  --muted:#9aa4b2;
-  --green:#3fb950;
-  --red:#f85149;
-  --gray:#8b949e;
-  --shadow:0 24px 70px rgba(0,0,0,.6);
-}
-*{box-sizing:border-box}
 body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(77,163,255,.08), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(99,102,241,.08), transparent 28%),
-    var(--bg);
-  color:var(--text);
+    margin:0;
+    font-family:-apple-system,Segoe UI,Roboto;
+    background:#05080c;
+    color:#e6edf3;
 }
-.wrapper{
-  max-width:900px;
-  margin:0 auto;
-  padding:20px 16px 40px;
+
+/* CONTAINER */
+.wrap{
+    max-width:600px;
+    margin:auto;
+    padding:20px;
 }
+
+/* CARD */
 .card{
-  background:linear-gradient(180deg,var(--panel),var(--panel-2));
-  border:1px solid var(--line);
-  border-radius:20px;
-  padding:20px;
-  box-shadow:var(--shadow);
+    background:linear-gradient(180deg,#0d131a,#0a0f14);
+    border:1px solid rgba(255,255,255,0.05);
+    border-radius:18px;
+    padding:20px;
 }
-.top{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:18px;
-}
+
+/* HEADER */
 .label{
-  font-size:11px;
-  letter-spacing:1.4px;
-  color:var(--muted);
-  text-transform:uppercase;
+    font-size:11px;
+    color:#8b949e;
+    letter-spacing:1.5px;
 }
-.main{
-  margin-top:10px;
-  font-size:28px;
-  font-weight:800;
-  line-height:1.05;
-}
-.main.rising{color:var(--green)}
-.main.falling{color:var(--red)}
-.main.mixed{color:var(--gray)}
-.sub{
-  margin-top:8px;
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.4;
-}
-.metrics{
-  margin-top:18px;
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
-}
-.metric{
-  background:rgba(255,255,255,.03);
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:12px;
-}
-.metric-k{
-  font-size:11px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:1px;
-}
-.metric-v{
-  margin-top:6px;
-  font-size:20px;
-  font-weight:700;
-}
-.metric-v.up{color:var(--green)}
-.metric-v.down{color:var(--red)}
-.section{
-  margin-top:22px;
-}
-.section-title{
-  font-size:12px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:1.2px;
-  margin-bottom:10px;
-}
-.movers{
-  display:grid;
-  gap:8px;
-}
-.row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:10px 12px;
-  background:rgba(255,255,255,.03);
-  border:1px solid var(--line);
-  border-radius:12px;
-}
-.row-left{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-.row-country{
-  font-size:14px;
-  font-weight:600;
-}
-.row-meta{
-  font-size:12px;
-  color:var(--muted);
-}
-.row-change.up{color:var(--green); font-weight:700;}
-.row-change.down{color:var(--red); font-weight:700;}
-.row-change.flat{color:var(--gray); font-weight:700;}
 
-.world{
-  margin-top:10px;
-  display:grid;
-  grid-template-columns:1fr;
-  gap:12px;
+.regime{
+    font-size:28px;
+    font-weight:800;
+    margin-top:10px;
 }
-.region{
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:14px;
-  background:rgba(255,255,255,.025);
-}
-.region-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-}
-.region-name{
-  font-size:14px;
-  font-weight:700;
-}
-.region-score{
-  font-size:12px;
-  color:var(--muted);
-}
-.region-bar{
-  width:100%;
-  height:8px;
-  border-radius:999px;
-  background:rgba(255,255,255,.05);
-  overflow:hidden;
-  margin-bottom:12px;
-}
-.region-fill{
-  height:100%;
-  border-radius:999px;
-}
-.fill-up{background:linear-gradient(90deg, rgba(63,185,80,.35), rgba(63,185,80,.9));}
-.fill-down{background:linear-gradient(90deg, rgba(248,81,73,.35), rgba(248,81,73,.9));}
-.fill-flat{background:linear-gradient(90deg, rgba(154,164,178,.25), rgba(154,164,178,.65));}
 
-.country-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:8px;
-}
-.country{
-  border-radius:10px;
-  padding:10px;
-  font-size:12px;
-  line-height:1.25;
-  border:1px solid var(--line);
-  cursor:pointer;
-  background:rgba(255,255,255,.03);
-}
-.country:hover{transform:translateY(-1px)}
-.country.up{background:rgba(63,185,80,.10)}
-.country.down{background:rgba(248,81,73,.10)}
-.country.flat{background:rgba(154,164,178,.08)}
-.country strong{display:block; font-size:12px; margin-bottom:3px}
-.country span{color:var(--muted)}
+.tightening{color:#3fb950;}
+.easing{color:#f85149;}
+.diverging{color:#9aa4b2;}
 
-.detail{
-  margin-top:18px;
-  border:1px solid var(--line);
-  background:rgba(255,255,255,.03);
-  border-radius:16px;
-  padding:14px;
+.confidence{
+    margin-top:5px;
+    font-size:14px;
+    color:#9aa4b2;
 }
-.detail-title{
-  font-size:12px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin-bottom:8px;
+
+/* STORY */
+.story{
+    margin-top:18px;
+    padding:14px;
+    background:rgba(255,255,255,0.03);
+    border-radius:12px;
+    line-height:1.5;
 }
-.detail-name{
-  font-size:18px;
-  font-weight:800;
-  margin-bottom:10px;
+
+/* ALERTS */
+.alerts{
+    margin-top:18px;
 }
-.detail-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
+
+.alert{
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:8px;
+    font-size:14px;
+    background:rgba(255,255,255,0.03);
 }
-.detail-item{
-  background:rgba(255,255,255,.025);
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:10px;
-}
-.detail-k{
-  font-size:11px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:.8px;
-}
-.detail-v{
-  margin-top:6px;
-  font-size:16px;
-  font-weight:700;
-}
+
+/* LOADER */
 .loader{
-  width:20px;
-  height:20px;
-  border:3px solid #2a3643;
-  border-top:3px solid #4da3ff;
-  border-radius:50%;
-  animation:spin 1s linear infinite;
+    width:18px;
+    height:18px;
+    border:3px solid #2a3643;
+    border-top:3px solid #4da3ff;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
 }
-.error{
-  color:var(--red);
-  font-weight:700;
-}
+
 @keyframes spin{
-  from{transform:rotate(0deg)}
-  to{transform:rotate(360deg)}
-}
-@media (min-width:768px){
-  .wrapper{padding:34px 24px 56px}
-  .card{padding:28px}
-  .top{
-    grid-template-columns:1.1fr .9fr;
-    align-items:start;
-  }
-  .main{font-size:34px}
-  .world{
-    grid-template-columns:repeat(2,1fr);
-  }
-  .country-grid{
-    grid-template-columns:repeat(3,1fr);
-  }
+    0%{transform:rotate(0);}
+    100%{transform:rotate(360deg);}
 }
 </style>
 </head>
+
 <body>
-<div class="wrapper">
-  <div class="card">
-    <div class="top">
-      <div>
-        <div class="label">BondStats Signal</div>
-        <div id="main" class="main"><div class="loader"></div></div>
-        <div id="sub" class="sub">Loading market signal...</div>
 
-        <div class="metrics">
-          <div class="metric">
-            <div class="metric-k">Coverage</div>
-            <div id="coverage" class="metric-v">--</div>
-          </div>
-          <div class="metric">
-            <div class="metric-k">Markets</div>
-            <div id="marketsCount" class="metric-v">--</div>
-          </div>
-        </div>
-      </div>
+<div class="wrap">
+<div class="card">
 
-      <div class="section" style="margin-top:0">
-        <div class="section-title">Top Movers</div>
-        <div id="movers" class="movers"></div>
-      </div>
-    </div>
+<div class="label">GLOBAL BOND SIGNAL</div>
 
-    <div class="section">
-      <div class="section-title">Global Market View</div>
-      <div id="world" class="world"></div>
-    </div>
+<div id="regime" class="regime">
+<div class="loader"></div>
+</div>
 
-    <div id="detail" class="detail">
-      <div class="detail-title">Country Detail</div>
-      <div class="detail-name">Tap a country</div>
-      <div class="sub" style="margin-top:0">Select any market below to inspect yield, move, source, and freshness.</div>
-    </div>
-  </div>
+<div id="confidence" class="confidence"></div>
+
+<div id="story" class="story"></div>
+
+<div id="alerts" class="alerts"></div>
+
+</div>
 </div>
 
 <script>
-const API = "https://botapi33.github.io/bondstats-global-yields/global_yields.json";
 
-const REGION_MAP = {
-  "united_states":"North America",
-  "canada":"North America",
-  "mexico":"North America",
-
-  "euro_area":"Europe",
-  "united_kingdom":"Europe",
-  "germany":"Europe",
-  "france":"Europe",
-  "italy":"Europe",
-  "spain":"Europe",
-  "netherlands":"Europe",
-  "switzerland":"Europe",
-  "sweden":"Europe",
-  "belgium":"Europe",
-  "austria":"Europe",
-  "portugal":"Europe",
-  "finland":"Europe",
-  "ireland":"Europe",
-  "denmark":"Europe",
-  "norway":"Europe",
-  "greece":"Europe",
-  "poland":"Europe",
-  "czech_republic":"Europe",
-  "hungary":"Europe",
-  "slovakia":"Europe",
-  "slovenia":"Europe",
-  "lithuania":"Europe",
-
-  "china":"Asia",
-  "india":"Asia",
-  "south_korea":"Asia",
-  "israel":"Asia",
-
-  "australia":"Asia-Pacific",
-  "new_zealand":"Asia-Pacific",
-
-  "chile":"Latin America",
-  "south_africa":"Africa"
-};
-
-function fmtChange(v){
-  if(v === null || v === undefined) return "--";
-  return `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`;
-}
-function clsFromChange(v){
-  if(v > 0) return "up";
-  if(v < 0) return "down";
-  return "flat";
-}
-function safeEntries(obj){
-  return Object.entries(obj || {});
-}
-function buildFallbackSignal(countries){
-  const arr = Object.values(countries).filter(c => c && c.change !== null && c.change !== undefined);
-  const up = arr.filter(c => c.change > 0).length;
-  const down = arr.filter(c => c.change < 0).length;
-  const total = arr.length || 1;
-  let direction = "Mixed";
-  if(up > down) direction = "Rising";
-  if(down > up) direction = "Falling";
-  const ratio = Math.abs(up - down) / total;
-  let strength = "Weak";
-  if(ratio > 0.6) strength = "Strong";
-  else if(ratio > 0.3) strength = "Moderate";
-  const coverage = Math.round((Math.max(up, down) / total) * 100);
-  const topMovers = arr
-    .slice()
-    .sort((a,b) => Math.abs(b.change) - Math.abs(a.change))
-    .slice(0,3)
-    .map(c => ({ country:c.label, change:Number(c.change) }));
-  return { direction, strength, coverage, topMovers };
-}
-
-function renderDetail(c){
-  const detail = document.getElementById("detail");
-  detail.innerHTML = `
-    <div class="detail-title">Country Detail</div>
-    <div class="detail-name">${c.label || "Unknown"}</div>
-    <div class="detail-grid">
-      <div class="detail-item">
-        <div class="detail-k">Yield</div>
-        <div class="detail-v">${c.value ?? "--"}%</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-k">Change</div>
-        <div class="detail-v ${clsFromChange(c.change)}">${fmtChange(c.change)}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-k">Date</div>
-        <div class="detail-v">${c.date || "--"}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-k">Source</div>
-        <div class="detail-v">${c.source || "--"}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-k">Frequency</div>
-        <div class="detail-v">${c.frequency || "--"}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-k">Tier</div>
-        <div class="detail-v">${c.tier || "--"}</div>
-      </div>
-    </div>
-  `;
-}
-
-function buildRegions(countries){
-  const buckets = {};
-  safeEntries(countries).forEach(([slug, c]) => {
-    const region = REGION_MAP[slug] || "Other";
-    if(!buckets[region]) buckets[region] = [];
-    buckets[region].push({ slug, ...c });
-  });
-  return buckets;
-}
-
-function renderWorld(countries){
-  const world = document.getElementById("world");
-  world.innerHTML = "";
-  const regions = buildRegions(countries);
-
-  Object.entries(regions).forEach(([regionName, list]) => {
-    const valid = list.filter(x => x.change !== null && x.change !== undefined);
-    const up = valid.filter(x => x.change > 0).length;
-    const down = valid.filter(x => x.change < 0).length;
-    let dir = "flat";
-    if(up > down) dir = "up";
-    if(down > up) dir = "down";
-    const score = valid.length ? Math.round((Math.max(up, down) / valid.length) * 100) : 0;
-
-    const region = document.createElement("div");
-    region.className = "region";
-    region.innerHTML = `
-      <div class="region-head">
-        <div class="region-name">${regionName}</div>
-        <div class="region-score">${score}% ${dir === "up" ? "up" : dir === "down" ? "down" : "mixed"}</div>
-      </div>
-      <div class="region-bar">
-        <div class="region-fill fill-${dir}" style="width:${score}%"></div>
-      </div>
-      <div class="country-grid"></div>
-    `;
-
-    const grid = region.querySelector(".country-grid");
-    list
-      .sort((a,b) => (b.value ?? -999) - (a.value ?? -999))
-      .forEach(c => {
-        const tile = document.createElement("div");
-        tile.className = `country ${clsFromChange(c.change)}`;
-        tile.innerHTML = `
-          <strong>${c.label}</strong>
-          <span>${c.value ?? "--"}% · ${fmtChange(c.change)}</span>
-        `;
-        tile.onclick = () => renderDetail(c);
-        grid.appendChild(tile);
-      });
-
-    world.appendChild(region);
-  });
-}
-
-function renderMovers(signal, countries){
-  const movers = document.getElementById("movers");
-  movers.innerHTML = "";
-
-  const items = (signal.topMovers && signal.topMovers.length)
-    ? signal.topMovers
-    : Object.values(countries)
-        .filter(c => c.change !== null && c.change !== undefined)
-        .sort((a,b) => Math.abs(b.change) - Math.abs(a.change))
-        .slice(0,3)
-        .map(c => ({ country:c.label, change:c.change }));
-
-  items.forEach(m => {
-    const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `
-      <div class="row-left">
-        <div class="row-country">${m.country}</div>
-        <div class="row-meta">Largest active move</div>
-      </div>
-      <div class="row-change ${clsFromChange(m.change)}">${fmtChange(m.change)}</div>
-    `;
-    movers.appendChild(row);
-  });
-}
+const API="https://botapi33.github.io/bondstats-global-yields/global_yields.json";
 
 async function load(){
-  const main = document.getElementById("main");
-  const sub = document.getElementById("sub");
 
-  try{
-    const res = await fetch(API + "?t=" + Date.now(), { cache: "no-store" });
-    if(!res.ok) throw new Error("HTTP " + res.status);
+    const res = await fetch(API + "?t=" + Date.now());
     const data = await res.json();
 
-    const countries = data.countries || {};
-    const signal = data.signal || buildFallbackSignal(countries);
+    const countries = Object.values(data.countries || {});
 
-    const direction = (signal.direction || "Mixed").toLowerCase();
-    const strength = (signal.strength || "Weak").toUpperCase();
-    const coverage = signal.coverage ?? "--";
-    const count = Object.keys(countries).length;
+    let up = 0, down = 0;
 
-    main.className = `main ${direction}`;
-    main.textContent = `${(signal.direction || "Mixed").toUpperCase()} • ${strength}`;
+    countries.forEach(c=>{
+        if(c.change > 0) up++;
+        if(c.change < 0) down++;
+    });
 
-    let meaning = "Diverging global bond markets";
-    if(direction === "rising") meaning = "Yields are moving higher across global markets.";
-    if(direction === "falling") meaning = "Yields are easing across global markets.";
-    sub.textContent = meaning;
+    const total = countries.length;
+    const dominance = Math.abs(up - down) / total;
 
-    document.getElementById("coverage").textContent =
-      coverage === "--" ? "--" : `${coverage}%`;
+    let regime="DIVERGING";
+    let cls="diverging";
 
-    document.getElementById("marketsCount").textContent = `${count}`;
+    if(up > down){
+        regime="TIGHTENING";
+        cls="tightening";
+    }
 
-    renderMovers(signal, countries);
-    renderWorld(countries);
+    if(down > up){
+        regime="EASING";
+        cls="easing";
+    }
 
-    const firstCountry = Object.values(countries)[0];
-    if(firstCountry) renderDetail(firstCountry);
+    const confidence = Math.round(dominance * 100);
 
-  }catch(err){
-    main.className = "main mixed";
-    main.innerHTML = `<span class="error">Signal unavailable</span>`;
-    sub.textContent = "The data feed could not be loaded.";
-    document.getElementById("coverage").textContent = "--";
-    document.getElementById("marketsCount").textContent = "--";
-    document.getElementById("world").innerHTML = "";
-    document.getElementById("movers").innerHTML = "";
-    document.getElementById("detail").innerHTML = `
-      <div class="detail-title">Country Detail</div>
-      <div class="detail-name">No live data</div>
-      <div class="sub" style="margin-top:0">Check the JSON feed or deployment path.</div>
-    `;
-  }
+    // STORY ENGINE (🔥 KEY)
+    let story="";
+
+    if(regime==="TIGHTENING"){
+        story = "Global bond yields are rising across major economies, indicating increasing rate pressure and tightening financial conditions.";
+    }
+
+    if(regime==="EASING"){
+        story = "Global bond yields are falling, suggesting easing financial conditions and potential shifts toward accommodative policy.";
+    }
+
+    if(regime==="DIVERGING"){
+        story = "Bond markets are showing mixed signals, with no clear global direction. Regional divergence suggests uncertainty in macro conditions.";
+    }
+
+    // ALERTS
+    const movers = countries
+        .sort((a,b)=>Math.abs(b.change)-Math.abs(a.change))
+        .slice(0,3);
+
+    const alerts = movers.map(c=>{
+        return `${c.label}: ${c.change > 0 ? "+" : ""}${c.change}%`;
+    });
+
+    // UI UPDATE
+    const regimeEl = document.getElementById("regime");
+    regimeEl.innerText = regime;
+    regimeEl.className = "regime " + cls;
+
+    document.getElementById("confidence").innerText =
+        "Confidence: " + confidence + "%";
+
+    document.getElementById("story").innerText = story;
+
+    const alertsEl = document.getElementById("alerts");
+    alertsEl.innerHTML = "<div class='label'>KEY MOVES</div>";
+
+    alerts.forEach(a=>{
+        const el = document.createElement("div");
+        el.className = "alert";
+        el.innerText = a;
+        alertsEl.appendChild(el);
+    });
 }
 
 load();
+
 </script>
+
 </body>
 </html>
