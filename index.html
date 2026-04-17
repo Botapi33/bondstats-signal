@@ -3,104 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal V8</title>
+<title>BondStats Signal</title>
 
 <style>
 body{
     margin:0;
     font-family:-apple-system,Segoe UI;
-    background:#04070b;
+    background:#05080d;
     color:#e6edf3;
 }
-.wrap{
+
+.container{
     max-width:600px;
     margin:auto;
     padding:20px;
 }
+
 .card{
     background:#0b1117;
     border-radius:18px;
-    padding:20px;
+    padding:22px;
     border:1px solid rgba(255,255,255,0.05);
 }
 
-/* HEADER */
+/* HEADLINE */
 .regime{
-    font-size:28px;
+    font-size:30px;
     font-weight:800;
 }
+
 .meta{
+    margin-top:6px;
     font-size:14px;
     color:#9aa4b2;
-    margin-top:5px;
 }
-.time{
+
+.updated{
+    margin-top:4px;
     font-size:12px;
     color:#6e7681;
-    margin-top:4px;
 }
 
-/* BLOCKS */
+/* SIGNAL */
+.signal{
+    margin-top:20px;
+    padding:16px;
+    border-radius:12px;
+    font-size:18px;
+    font-weight:600;
+}
+
+.buy{ background:rgba(63,185,80,0.15); color:#3fb950;}
+.sell{ background:rgba(248,81,73,0.15); color:#f85149;}
+.neutral{ background:rgba(255,255,255,0.05);}
+
+/* BLOCK */
 .block{
     margin-top:18px;
-    padding:14px;
-    border-radius:12px;
-    background:rgba(255,255,255,0.03);
 }
 
-.title{
+.label{
     font-size:11px;
-    color:#8b949e;
     letter-spacing:1.5px;
+    color:#8b949e;
 }
 
 .value{
+    margin-top:6px;
     font-size:18px;
     font-weight:700;
-    margin-top:6px;
 }
 
 .sub{
-    font-size:12px;
+    font-size:13px;
     color:#9aa4b2;
     margin-top:4px;
 }
-
-.green{color:#3fb950;}
-.red{color:#f85149;}
-.gray{color:#9aa4b2;}
 </style>
 </head>
 
 <body>
 
-<div class="wrap">
+<div class="container">
 <div class="card">
 
 <div id="regime" class="regime">Loading...</div>
 <div id="meta" class="meta"></div>
-<div id="time" class="time"></div>
+<div id="updated" class="updated"></div>
+
+<div id="signal" class="signal"></div>
 
 <div class="block">
-<div class="title">MOMENTUM</div>
-<div id="momentum" class="value"></div>
-<div id="momentumTrend" class="sub"></div>
+<div class="label">CONVICTION</div>
+<div id="conviction" class="value"></div>
 </div>
 
 <div class="block">
-<div class="title">TREND STABILITY</div>
-<div id="stability" class="value"></div>
-<div id="stabilityTrend" class="sub"></div>
-</div>
-
-<div class="block">
-<div class="title">REVERSAL RISK</div>
-<div id="reversal" class="value"></div>
-</div>
-
-<div class="block">
-<div class="title">OUTLOOK</div>
-<div id="outlook" class="value"></div>
+<div class="label">TOP DRIVERS</div>
+<div id="drivers" class="sub"></div>
 </div>
 
 </div>
@@ -115,110 +115,82 @@ async function load(){
 const res = await fetch(API + "?t=" + Date.now());
 const data = await res.json();
 
-const countries = Object.values(data.countries || {});
+const countries = Object.entries(data.countries);
 
-/* ---------- CALC ---------- */
+/* ----------- CALC ----------- */
 
-let up=0, down=0, absSum=0;
+let up=[], down=[];
 
-countries.forEach(c=>{
-    if(c.change>0) up++;
-    if(c.change<0) down++;
-    absSum += Math.abs(c.change || 0);
+countries.forEach(([name,c])=>{
+    if(c.change>0) up.push({name,val:c.change});
+    if(c.change<0) down.push({name,val:c.change});
 });
 
 const total = countries.length;
 
-const dominance = Math.abs(up-down)/total;
-const avgMove = absSum/total;
+const dominance = Math.abs(up.length - down.length)/total;
+const avgMove = countries.reduce((a,[,c])=>a+Math.abs(c.change||0),0)/total;
 
-/* ---------- REGIME ---------- */
+/* ----------- REGIME ----------- */
 
-let regime="DIVERGING";
+let regime="MIXED";
 
-if(up>down) regime="TIGHTENING";
-if(down>up) regime="EASING";
+if(up.length > down.length*1.3) regime="TIGHTENING";
+if(down.length > up.length*1.3) regime="EASING";
 
-/* ---------- MOMENTUM ---------- */
+/* ----------- CONVICTION ----------- */
 
-let momentum="LOW";
-if(avgMove > 0.3) momentum="HIGH";
-else if(avgMove > 0.15) momentum="MEDIUM";
+let conviction = Math.round((dominance*0.6 + avgMove*0.4)*100);
 
-/* ---------- STABILITY ---------- */
+/* ----------- SIGNAL ----------- */
 
-let stability="LOW";
-if(dominance > 0.6) stability="HIGH";
-else if(dominance > 0.3) stability="MEDIUM";
+let signalText="Stay neutral";
+let signalClass="neutral";
 
-/* ---------- REVERSAL ---------- */
-
-let reversal="LOW";
-
-if(momentum==="HIGH" && stability==="LOW") reversal="HIGH";
-else if(stability==="LOW") reversal="MEDIUM";
-
-/* ---------- LOAD PREVIOUS ---------- */
-
-let prev = JSON.parse(localStorage.getItem("bondstats_signal") || "{}");
-
-/* ---------- TRENDS ---------- */
-
-function trendText(current, previous){
-    if(!previous) return "—";
-
-    if(current > previous) return "↑ strengthening";
-    if(current < previous) return "↓ weakening";
-    return "→ unchanged";
+if(regime==="TIGHTENING"){
+    signalText="Rates rising → reduce duration exposure";
+    signalClass="sell";
+}
+else if(regime==="EASING"){
+    signalText="Rates falling → extend duration exposure";
+    signalClass="buy";
 }
 
-/* ---------- STORE ---------- */
+/* ----------- DRIVERS ----------- */
 
-localStorage.setItem("bondstats_signal", JSON.stringify({
-    avgMove,
-    dominance,
-    time: Date.now()
-}));
+const movers = [...up, ...down]
+.sort((a,b)=>Math.abs(b.val)-Math.abs(a.val))
+.slice(0,3)
+.map(x=>x.name)
+.join(", ");
 
-/* ---------- OUTLOOK ---------- */
+/* ----------- DATE ----------- */
 
-let outlook="UNCLEAR";
+let latestDate="";
 
-if(regime==="TIGHTENING" && momentum==="HIGH"){
-    outlook="Upward pressure likely to persist";
-}
-else if(regime==="EASING" && momentum==="HIGH"){
-    outlook="Downward pressure building";
-}
-else if(stability==="LOW"){
-    outlook="Unstable conditions — reversal risk elevated";
-}
+countries.forEach(([_,c])=>{
+    if(c.date > latestDate) latestDate = c.date;
+});
 
-/* ---------- TIME ---------- */
-
-const now = new Date();
-
-document.getElementById("time").innerText =
-"Updated: " + now.toLocaleString();
-
-/* ---------- UI ---------- */
+/* ----------- UI ----------- */
 
 document.getElementById("regime").innerText = regime;
+
 document.getElementById("meta").innerText =
-`${up} rising • ${down} falling`;
+`${up.length} rising • ${down.length} falling`;
 
-document.getElementById("momentum").innerText = momentum;
-document.getElementById("stability").innerText = stability;
-document.getElementById("reversal").innerText = reversal;
-document.getElementById("outlook").innerText = outlook;
+document.getElementById("updated").innerText =
+"Data: " + latestDate;
 
-/* ---------- TREND UI ---------- */
+const signalEl = document.getElementById("signal");
+signalEl.innerText = signalText;
+signalEl.className = "signal " + signalClass;
 
-document.getElementById("momentumTrend").innerText =
-trendText(avgMove, prev.avgMove);
+document.getElementById("conviction").innerText =
+conviction + "/100";
 
-document.getElementById("stabilityTrend").innerText =
-trendText(dominance, prev.dominance);
+document.getElementById("drivers").innerText =
+movers || "—";
 
 }
 
