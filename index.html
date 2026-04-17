@@ -3,100 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal V6</title>
+<title>BondStats Signal V7</title>
 
 <style>
 body{
     margin:0;
-    font-family:-apple-system,Segoe UI,Roboto;
-    background:#05080c;
+    font-family:-apple-system,Segoe UI;
+    background:#04070b;
     color:#e6edf3;
 }
-
 .wrap{
     max-width:600px;
     margin:auto;
     padding:20px;
 }
-
 .card{
-    background:linear-gradient(180deg,#0d131a,#0a0f14);
-    border:1px solid rgba(255,255,255,0.05);
+    background:#0b1117;
     border-radius:18px;
     padding:20px;
+    border:1px solid rgba(255,255,255,0.05);
 }
 
 /* HEADER */
-.label{
+.regime{
+    font-size:28px;
+    font-weight:800;
+}
+.meta{
+    font-size:14px;
+    color:#9aa4b2;
+    margin-top:5px;
+}
+
+/* PREDICTIONS */
+.block{
+    margin-top:20px;
+    padding:14px;
+    border-radius:12px;
+    background:rgba(255,255,255,0.03);
+}
+
+.title{
     font-size:11px;
     color:#8b949e;
     letter-spacing:1.5px;
 }
 
-.regime{
-    font-size:30px;
-    font-weight:800;
-    margin-top:10px;
+.value{
+    font-size:18px;
+    font-weight:700;
+    margin-top:6px;
 }
 
-.tightening{color:#3fb950;}
-.easing{color:#f85149;}
-.diverging{color:#9aa4b2;}
-
-.conf{
-    font-size:14px;
-    color:#9aa4b2;
-    margin-top:4px;
-}
-
-/* ALERTS */
-.section{
-    margin-top:20px;
-}
-
-.alert{
-    padding:12px;
-    border-radius:12px;
-    margin-bottom:10px;
-    font-size:14px;
-    line-height:1.4;
-}
-
-.high{
-    background:rgba(248,81,73,0.15);
-}
-
-.medium{
-    background:rgba(255,184,0,0.15);
-}
-
-.low{
-    background:rgba(63,185,80,0.15);
-}
-
-/* STORY */
-.story{
-    margin-top:15px;
-    padding:14px;
-    background:rgba(255,255,255,0.03);
-    border-radius:12px;
-    line-height:1.5;
-}
-
-/* LOADER */
-.loader{
-    width:18px;
-    height:18px;
-    border:3px solid #2a3643;
-    border-top:3px solid #4da3ff;
-    border-radius:50%;
-    animation:spin 1s linear infinite;
-}
-
-@keyframes spin{
-    0%{transform:rotate(0);}
-    100%{transform:rotate(360deg);}
-}
+.green{color:#3fb950;}
+.red{color:#f85149;}
+.gray{color:#9aa4b2;}
 </style>
 </head>
 
@@ -105,19 +66,27 @@ body{
 <div class="wrap">
 <div class="card">
 
-<div class="label">GLOBAL BOND SIGNAL</div>
+<div id="regime" class="regime">Loading...</div>
+<div id="meta" class="meta"></div>
 
-<div id="regime" class="regime">
-<div class="loader"></div>
+<div class="block">
+<div class="title">MOMENTUM</div>
+<div id="momentum" class="value"></div>
 </div>
 
-<div id="conf" class="conf"></div>
+<div class="block">
+<div class="title">TREND STABILITY</div>
+<div id="stability" class="value"></div>
+</div>
 
-<div id="story" class="story"></div>
+<div class="block">
+<div class="title">REVERSAL RISK</div>
+<div id="reversal" class="value"></div>
+</div>
 
-<div class="section">
-<div class="label">MARKET ALERTS</div>
-<div id="alerts"></div>
+<div class="block">
+<div class="title">OUTLOOK</div>
+<div id="outlook" class="value"></div>
 </div>
 
 </div>
@@ -134,114 +103,80 @@ const data = await res.json();
 
 const countries = Object.values(data.countries || {});
 
-let up=0, down=0;
+/* ---------- BASE CALC ---------- */
+
+let up=0, down=0, absSum=0;
 
 countries.forEach(c=>{
     if(c.change>0) up++;
     if(c.change<0) down++;
+    absSum += Math.abs(c.change || 0);
 });
 
 const total = countries.length;
+
 const dominance = Math.abs(up-down)/total;
+const avgMove = absSum/total;
+
+/* ---------- REGIME ---------- */
 
 let regime="DIVERGING";
-let cls="diverging";
 
-if(up>down){
-    regime="TIGHTENING";
-    cls="tightening";
-}
-if(down>up){
-    regime="EASING";
-    cls="easing";
-}
+if(up>down) regime="TIGHTENING";
+if(down>up) regime="EASING";
 
-const confidence = Math.round(dominance*100);
+/* ---------- MOMENTUM ---------- */
 
-/* ------------------ ALERT ENGINE ------------------ */
+let momentum="LOW";
 
-let alerts=[];
+if(avgMove > 0.3) momentum="HIGH";
+else if(avgMove > 0.15) momentum="MEDIUM";
 
-/* BREAKOUT */
-if(up/total > 0.7){
-    alerts.push({
-        text:"⚠️ Broad yield breakout — majority of markets moving higher",
-        level:"high"
-    });
-}
+/* ---------- STABILITY ---------- */
 
-if(down/total > 0.7){
-    alerts.push({
-        text:"⚠️ Broad easing — yields falling across markets",
-        level:"high"
-    });
+let stability="LOW";
+
+if(dominance > 0.6) stability="HIGH";
+else if(dominance > 0.3) stability="MEDIUM";
+
+/* ---------- REVERSAL ---------- */
+
+let reversal="LOW";
+
+if(momentum==="HIGH" && stability==="LOW"){
+    reversal="HIGH";
 }
 
-/* EXTREME MOVES */
-const movers = countries
-.sort((a,b)=>Math.abs(b.change)-Math.abs(a.change))
-.slice(0,3);
-
-movers.forEach(c=>{
-    if(Math.abs(c.change) > 0.5){
-        alerts.push({
-            text:`🚨 ${c.label} large move (${c.change>0?"+":""}${c.change}%)`,
-            level:"medium"
-        });
-    }
-});
-
-/* DIVERGENCE */
-if(up>0 && down>0 && dominance < 0.3){
-    alerts.push({
-        text:"🔀 Market divergence increasing across regions",
-        level:"medium"
-    });
+if(momentum==="LOW" && stability==="LOW"){
+    reversal="MEDIUM";
 }
 
-/* DEFAULT */
-if(alerts.length===0){
-    alerts.push({
-        text:"No significant market stress detected",
-        level:"low"
-    });
+/* ---------- OUTLOOK ---------- */
+
+let outlook="UNCLEAR";
+
+if(regime==="TIGHTENING" && momentum==="HIGH"){
+    outlook="YIELDS LIKELY TO CONTINUE RISING";
 }
 
-/* ------------------ STORY ------------------ */
-
-let story="";
-
-if(regime==="TIGHTENING"){
-    story="Yields are rising globally, indicating tightening financial conditions and potential upward pressure on rates.";
+if(regime==="EASING" && momentum==="HIGH"){
+    outlook="YIELDS LIKELY TO CONTINUE FALLING";
 }
 
-if(regime==="EASING"){
-    story="Global yields are falling, suggesting easing conditions and possible shifts toward accommodative policy.";
+if(stability==="LOW"){
+    outlook="HIGH UNCERTAINTY — POSSIBLE REVERSAL";
 }
 
-if(regime==="DIVERGING"){
-    story="Markets are mixed, with no clear global direction. Divergence signals uncertainty in macro conditions.";
-}
+/* ---------- UI ---------- */
 
-/* ------------------ UI ------------------ */
+document.getElementById("regime").innerText = regime;
+document.getElementById("meta").innerText =
+`${up} rising • ${down} falling`;
 
-const regimeEl = document.getElementById("regime");
-regimeEl.innerText = regime;
-regimeEl.className = "regime "+cls;
-
-document.getElementById("conf").innerText =
-"Confidence: "+confidence+"%";
-
-document.getElementById("story").innerText = story;
-
-const alertsEl = document.getElementById("alerts");
-
-alerts.forEach(a=>{
-    const el=document.createElement("div");
-    el.className="alert "+a.level;
-    el.innerText=a.text;
-    alertsEl.appendChild(el);
-});
+document.getElementById("momentum").innerText = momentum;
+document.getElementById("stability").innerText = stability;
+document.getElementById("reversal").innerText = reversal;
+document.getElementById("outlook").innerText = outlook;
 
 }
 
