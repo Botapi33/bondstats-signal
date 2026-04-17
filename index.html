@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal</title>
+<title>BondStats Signal V3</title>
 
 <style>
 body{
@@ -25,103 +25,68 @@ body{
 
 .card{
     background:linear-gradient(180deg,#0d131a,#0a0f14);
-    border:1px solid rgba(255,255,255,0.05);
     border-radius:16px;
     padding:24px;
     box-shadow:0 25px 70px rgba(0,0,0,0.7);
 }
 
-/* HEADER */
 .header{
     display:flex;
     justify-content:space-between;
-    align-items:center;
 }
 
 .label{
     font-size:11px;
     color:#8b949e;
-    letter-spacing:1.5px;
 }
 
-.pulse{
-    width:8px;
-    height:8px;
-    background:#3fb950;
-    border-radius:50%;
-    animation:pulse 1.5s infinite;
-}
-
-@keyframes pulse{
-    0%{opacity:0.3;}
-    50%{opacity:1;}
-    100%{opacity:0.3;}
-}
-
-/* MAIN */
 .main{
-    font-size:28px;
+    font-size:26px;
     font-weight:700;
-    margin-top:12px;
+    margin-top:10px;
 }
-
-.rising{color:#3fb950;}
-.falling{color:#f85149;}
-.mixed{color:#9aa4b2;}
 
 .coverage{
     font-size:14px;
     color:#9aa4b2;
-    margin-top:6px;
 }
-
-/* MOVERS */
-.section{
-    margin-top:20px;
-    font-size:12px;
-    color:#8b949e;
-}
-
-.row{
-    display:flex;
-    justify-content:space-between;
-    padding:6px 0;
-}
-
-.up{color:#3fb950;}
-.down{color:#f85149;}
 
 /* HEATMAP */
 .heatmap{
     display:grid;
     grid-template-columns:repeat(4,1fr);
     gap:6px;
-    margin-top:15px;
+    margin-top:20px;
 }
 
 .box{
-    padding:6px;
+    padding:8px;
+    border-radius:6px;
     font-size:10px;
     text-align:center;
-    border-radius:6px;
+    cursor:pointer;
+    transition:0.2s;
 }
 
-.box.up{background:rgba(63,185,80,0.2);}
-.box.down{background:rgba(248,81,73,0.2);}
-.box.flat{background:rgba(154,164,178,0.2);}
-
-.loader{
-    width:18px;
-    height:18px;
-    border:3px solid #2a3643;
-    border-top:3px solid #4da3ff;
-    border-radius:50%;
-    animation:spin 1s linear infinite;
+.box:hover{
+    transform:scale(1.1);
 }
 
-@keyframes spin{
-    0%{transform:rotate(0);}
-    100%{transform:rotate(360deg);}
+.up{background:rgba(63,185,80,0.2);}
+.down{background:rgba(248,81,73,0.2);}
+.flat{background:rgba(154,164,178,0.2);}
+
+/* DETAIL PANEL */
+.detail{
+    margin-top:20px;
+    padding:14px;
+    border-radius:10px;
+    background:#0b1117;
+    font-size:14px;
+}
+
+.highlight{
+    border:1px solid #4da3ff;
 }
 </style>
 </head>
@@ -134,17 +99,16 @@ body{
 
 <div class="header">
     <div class="label">BONDSTATS SIGNAL</div>
-    <div class="pulse"></div>
 </div>
 
-<div id="main" class="main"><div class="loader"></div></div>
+<div id="main" class="main">Loading...</div>
 <div id="coverage" class="coverage"></div>
 
-<div class="section">Top Movers</div>
-<div id="movers"></div>
+<div class="heatmap" id="heatmap"></div>
 
-<div class="section">Market Heatmap</div>
-<div id="heatmap" class="heatmap"></div>
+<div id="detail" class="detail">
+Click a country to see details
+</div>
 
 </div>
 
@@ -162,37 +126,44 @@ async function load(){
     const s=data.signal;
     const countries=data.countries;
 
-    const main=document.getElementById("main");
-    const coverage=document.getElementById("coverage");
-    const movers=document.getElementById("movers");
+    document.getElementById("main").innerText=
+        s.direction.toUpperCase()+" • "+s.strength.toUpperCase();
+
+    document.getElementById("coverage").innerText=
+        s.coverage+"% of markets moving "+s.direction.toLowerCase();
+
     const heatmap=document.getElementById("heatmap");
+    const detail=document.getElementById("detail");
 
-    // MAIN
-    main.innerText=s.direction.toUpperCase()+" • "+s.strength.toUpperCase();
-    main.classList.add(s.direction.toLowerCase());
-
-    coverage.innerText=s.coverage+"% of markets moving "+s.direction.toLowerCase();
-
-    // MOVERS
-    let mHTML="";
-    s.topMovers.forEach(m=>{
-        let cls=m.change>=0?"up":"down";
-        let sign=m.change>0?"+":"";
-        mHTML+=`<div class="row"><div>${m.country}</div><div class="${cls}">${sign}${m.change}%</div></div>`;
-    });
-    movers.innerHTML=mHTML;
-
-    // HEATMAP
-    let hHTML="";
     Object.values(countries).forEach(c=>{
+
         let cls="flat";
         if(c.change>0) cls="up";
         if(c.change<0) cls="down";
 
-        hHTML+=`<div class="box ${cls}">${c.label.slice(0,3)}</div>`;
+        let el=document.createElement("div");
+        el.className="box "+cls;
+
+        // Highlight USA
+        if(c.label==="United States"){
+            el.classList.add("highlight");
+        }
+
+        el.innerText=c.label.slice(0,3);
+
+        el.onclick=()=>{
+            detail.innerHTML=`
+            <b>${c.label}</b><br><br>
+            Yield: ${c.value ?? "--"}%<br>
+            Change: ${c.change ?? "--"}<br>
+            Source: ${c.source}
+            `;
+        };
+
+        heatmap.appendChild(el);
+
     });
 
-    heatmap.innerHTML=hHTML;
 }
 
 load();
