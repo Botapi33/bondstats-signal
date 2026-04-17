@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BondStats Signal V7</title>
+<title>BondStats Signal V8</title>
 
 <style>
 body{
@@ -34,10 +34,15 @@ body{
     color:#9aa4b2;
     margin-top:5px;
 }
+.time{
+    font-size:12px;
+    color:#6e7681;
+    margin-top:4px;
+}
 
-/* PREDICTIONS */
+/* BLOCKS */
 .block{
-    margin-top:20px;
+    margin-top:18px;
     padding:14px;
     border-radius:12px;
     background:rgba(255,255,255,0.03);
@@ -55,6 +60,12 @@ body{
     margin-top:6px;
 }
 
+.sub{
+    font-size:12px;
+    color:#9aa4b2;
+    margin-top:4px;
+}
+
 .green{color:#3fb950;}
 .red{color:#f85149;}
 .gray{color:#9aa4b2;}
@@ -68,15 +79,18 @@ body{
 
 <div id="regime" class="regime">Loading...</div>
 <div id="meta" class="meta"></div>
+<div id="time" class="time"></div>
 
 <div class="block">
 <div class="title">MOMENTUM</div>
 <div id="momentum" class="value"></div>
+<div id="momentumTrend" class="sub"></div>
 </div>
 
 <div class="block">
 <div class="title">TREND STABILITY</div>
 <div id="stability" class="value"></div>
+<div id="stabilityTrend" class="sub"></div>
 </div>
 
 <div class="block">
@@ -103,7 +117,7 @@ const data = await res.json();
 
 const countries = Object.values(data.countries || {});
 
-/* ---------- BASE CALC ---------- */
+/* ---------- CALC ---------- */
 
 let up=0, down=0, absSum=0;
 
@@ -128,14 +142,12 @@ if(down>up) regime="EASING";
 /* ---------- MOMENTUM ---------- */
 
 let momentum="LOW";
-
 if(avgMove > 0.3) momentum="HIGH";
 else if(avgMove > 0.15) momentum="MEDIUM";
 
 /* ---------- STABILITY ---------- */
 
 let stability="LOW";
-
 if(dominance > 0.6) stability="HIGH";
 else if(dominance > 0.3) stability="MEDIUM";
 
@@ -143,29 +155,51 @@ else if(dominance > 0.3) stability="MEDIUM";
 
 let reversal="LOW";
 
-if(momentum==="HIGH" && stability==="LOW"){
-    reversal="HIGH";
+if(momentum==="HIGH" && stability==="LOW") reversal="HIGH";
+else if(stability==="LOW") reversal="MEDIUM";
+
+/* ---------- LOAD PREVIOUS ---------- */
+
+let prev = JSON.parse(localStorage.getItem("bondstats_signal") || "{}");
+
+/* ---------- TRENDS ---------- */
+
+function trendText(current, previous){
+    if(!previous) return "—";
+
+    if(current > previous) return "↑ strengthening";
+    if(current < previous) return "↓ weakening";
+    return "→ unchanged";
 }
 
-if(momentum==="LOW" && stability==="LOW"){
-    reversal="MEDIUM";
-}
+/* ---------- STORE ---------- */
+
+localStorage.setItem("bondstats_signal", JSON.stringify({
+    avgMove,
+    dominance,
+    time: Date.now()
+}));
 
 /* ---------- OUTLOOK ---------- */
 
 let outlook="UNCLEAR";
 
 if(regime==="TIGHTENING" && momentum==="HIGH"){
-    outlook="YIELDS LIKELY TO CONTINUE RISING";
+    outlook="Upward pressure likely to persist";
+}
+else if(regime==="EASING" && momentum==="HIGH"){
+    outlook="Downward pressure building";
+}
+else if(stability==="LOW"){
+    outlook="Unstable conditions — reversal risk elevated";
 }
 
-if(regime==="EASING" && momentum==="HIGH"){
-    outlook="YIELDS LIKELY TO CONTINUE FALLING";
-}
+/* ---------- TIME ---------- */
 
-if(stability==="LOW"){
-    outlook="HIGH UNCERTAINTY — POSSIBLE REVERSAL";
-}
+const now = new Date();
+
+document.getElementById("time").innerText =
+"Updated: " + now.toLocaleString();
 
 /* ---------- UI ---------- */
 
@@ -177,6 +211,14 @@ document.getElementById("momentum").innerText = momentum;
 document.getElementById("stability").innerText = stability;
 document.getElementById("reversal").innerText = reversal;
 document.getElementById("outlook").innerText = outlook;
+
+/* ---------- TREND UI ---------- */
+
+document.getElementById("momentumTrend").innerText =
+trendText(avgMove, prev.avgMove);
+
+document.getElementById("stabilityTrend").innerText =
+trendText(dominance, prev.dominance);
 
 }
 
